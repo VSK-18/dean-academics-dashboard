@@ -1,0 +1,279 @@
+<!-- Developed by Vishwajeet Bhamre on 2026-06-09 22:24 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Budget & Utilization Dashboard - Dean Academics</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for beautiful visuals -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Auth Container (Visible by default) -->
+    <div class="auth-wrapper" id="auth-container">
+        <div class="glass-card auth-card fade-in">
+            <div class="auth-header">
+                <i class="fa-solid fa-building-columns auth-logo"></i>
+                <h2>Dean Academics Budget Hub</h2>
+                <p>Sign in to your portal profile</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" placeholder="e.g. admin" required autocomplete="username">
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                
+                <div class="auth-alert" id="auth-error-msg" style="display: none;">
+                    <i class="fa-solid fa-circle-exclamation"></i> Invalid username or password.
+                </div>
+
+                <button type="submit" class="btn btn-primary auth-submit-btn">
+                    Sign In <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </button>
+            </form>
+
+            <div class="demo-credentials">
+                <div><strong>Admin:</strong> admin / admin123</div>
+                <div><strong>Viewer:</strong> viewer / viewer123</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container (Hidden by default) -->
+    <div class="container" id="dashboard-container" style="display: none;">
+        <!-- Dashboard Header -->
+        <header class="fade-in">
+            <div class="brand-section">
+                <h1>Dean Academics Budget Hub</h1>
+                <p>Savitribai Phule Pune University (SPPU) Affiliated</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="user-profile-badge">
+                    <i class="fa-solid fa-user-shield" id="user-role-icon"></i>
+                    <span id="user-role-text">Admin</span>
+                </div>
+                <div class="fy-badge">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>FY: April 1 – March 31</span>
+                </div>
+                <button class="btn btn-secondary" id="btn-logout" title="Sign Out">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Summary Grid -->
+        <section class="summary-grid fade-in" style="animation-delay: 0.1s;">
+            <!-- Total Budget Card -->
+            <div class="glass-card summary-card">
+                <div class="card-header">
+                    <span>Total Sanctioned Budget</span>
+                    <i class="fa-solid fa-wallet card-icon" style="color: var(--primary);"></i>
+                </div>
+                <div class="card-value" id="stat-total-budget">₹1.62 Cr</div>
+                <div class="card-footer">
+                    <span>Active Allocations</span>
+                    <span id="stat-total-percent">100% Allocated</span>
+                </div>
+            </div>
+
+            <!-- AAF Budget Card -->
+            <div class="glass-card summary-card">
+                <div class="card-header">
+                    <span>AAF (Academic Affiliation)</span>
+                    <i class="fa-solid fa-graduation-cap card-icon" style="color: var(--primary);"></i>
+                </div>
+                <div class="card-value" id="stat-aaf-budget">₹62.00 L</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="stat-aaf-progress" style="width: 0%;"></div>
+                </div>
+                <div class="card-footer">
+                    <span>Utilized: <strong id="stat-aaf-utilized">₹0.00 L</strong></span>
+                    <span id="stat-aaf-percent">0%</span>
+                </div>
+            </div>
+
+            <!-- EQA Budget Card -->
+            <div class="glass-card summary-card eqa">
+                <div class="card-header">
+                    <span>EQA (Equipment / Labs)</span>
+                    <i class="fa-solid fa-microscope card-icon" style="color: var(--secondary);"></i>
+                </div>
+                <div class="card-value" id="stat-eqa-budget">₹1.00 Cr</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="stat-eqa-progress" style="width: 0%;"></div>
+                </div>
+                <div class="card-footer">
+                    <span>Utilized: <strong id="stat-eqa-utilized">₹0.00 L</strong></span>
+                    <span id="stat-eqa-percent">0%</span>
+                </div>
+            </div>
+
+            <!-- AAF Split Card -->
+            <div class="glass-card summary-card contingency">
+                <div class="card-header">
+                    <span>AAF Contingency (10%)</span>
+                    <i class="fa-solid fa-shield-halved card-icon" style="color: var(--warning);"></i>
+                </div>
+                <div class="card-value" id="stat-contingency-val">₹6.20 L</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="stat-contingency-progress" style="width: 100%;"></div>
+                </div>
+                <div class="card-footer">
+                    <span>Divided (90%): <strong id="stat-divided-val">₹55.80 L</strong></span>
+                    <span>Reserved</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab Switcher Navigation -->
+        <div class="tabs-container fade-in" style="animation-delay: 0.15s;">
+            <button class="tab-btn active" id="tab-analytics-btn">
+                <i class="fa-solid fa-chart-pie"></i> Analytics & Charts
+            </button>
+            <button class="tab-btn" id="tab-manage-btn">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Proposals Registry
+            </button>
+        </div>
+
+        <!-- TAB 1: Charts Panel (Visible by default) -->
+        <section class="analytics-grid fade-in" id="panel-analytics" style="animation-delay: 0.2s;">
+            <!-- Main Utilization Chart -->
+            <div class="glass-card">
+                <div class="chart-header">
+                    <h2>Department-wise Sanctioned vs. Utilized</h2>
+                    <span class="card-footer">Live Data Feed</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="utilizationChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Distribution Ratio Chart -->
+            <div class="glass-card">
+                <div class="chart-header">
+                    <h2>Budget Allocation</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="ratioChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Management Panel (Hidden by default, contains split-view form/table) -->
+        <section class="split-grid fade-in" id="panel-manage" style="display: none; animation-delay: 0.2s;">
+            <!-- Persistent Add / Edit Form (Admin Only) -->
+            <div class="glass-card form-card admin-only" id="form-sidebar-container">
+                <h3 id="form-panel-title" style="margin-bottom: 1.25rem; font-size: 1.2rem;">Create Budget Proposal</h3>
+                <form id="proposal-form">
+                    <input type="hidden" id="proposal-id-hidden">
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="proposal-category">Budget Category</label>
+                            <select id="proposal-category" required>
+                                <option value="AAF">AAF (Academic Affiliation)</option>
+                                <option value="EQA">EQA (Equipment / Labs)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-dept">Department / Component</label>
+                            <select id="proposal-dept" required>
+                                <option value="Computer">Computer Department</option>
+                                <option value="IT">IT Department</option>
+                                <option value="E&TC">E&TC Department</option>
+                                <option value="Mechanical">Mechanical Department</option>
+                                <option value="Civil">Civil Department</option>
+                                <option value="All Departments">All Departments (General)</option>
+                                <option value="Workshop">Workshop</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-comp">Requirement / Description</label>
+                            <input type="text" id="proposal-comp" placeholder="e.g. AC Installation" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-amount">Sanctioned Amount (₹)</label>
+                            <input type="number" id="proposal-amount" min="0" placeholder="e.g. 5000" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-utilization">Utilized Amount (₹)</label>
+                            <input type="number" id="proposal-utilization" min="0" placeholder="e.g. 3500" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-date">Date of Entry</label>
+                            <input type="date" id="proposal-date" required>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button type="button" class="btn btn-secondary" id="btn-cancel-form" style="flex: 1; display: none;">Clear</button>
+                            <button type="submit" class="btn btn-primary" id="btn-save-proposal" style="flex: 2;">Save Proposal</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Read Only notification placeholder for viewer in left column -->
+            <div class="glass-card viewer-only" style="display: none; padding: 2rem; text-align: center; justify-content: center; align-items: center; flex-direction: column;">
+                <i class="fa-solid fa-lock" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                <h3>Read-Only Profile</h3>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem; line-height: 1.4;">
+                    Your profile has viewer-only privileges. Proposals can only be submitted or modified by the Administrator.
+                </p>
+            </div>
+
+            <!-- Proposals Table and Controls -->
+            <div class="glass-card" style="flex-grow: 1;">
+                <div class="controls-bar" style="margin-bottom: 1.5rem;">
+                    <div class="search-filter-group">
+                        <input type="text" id="search-query" class="search-input" placeholder="Search proposals...">
+                        <select id="filter-category" class="search-input" style="max-width: 140px; cursor: pointer;">
+                            <option value="all">All Budgets</option>
+                            <option value="AAF">AAF Only</option>
+                            <option value="EQA">EQA Only</option>
+                        </select>
+                    </div>
+                    
+                    <div class="date-filters">
+                        <input type="date" id="filter-date-start" value="2026-04-01">
+                        <span style="color: var(--text-muted);">to</span>
+                        <input type="date" id="filter-date-end" value="2026-05-15">
+                        <button class="btn btn-secondary" id="btn-reset-filters" title="Reset Filters" style="padding: 0.65rem 0.8rem;">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="table-container">
+                    <table id="proposals-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th>Category</th>
+                                <th>Component / Dept</th>
+                                <th>Date</th>
+                                <th>Sanctioned</th>
+                                <th>Utilized</th>
+                                <th>Status</th>
+                                <th style="width: 100px; text-align: center;" id="th-actions" class="admin-only">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proposals-list">
+                            <!-- Rows injected dynamically via app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

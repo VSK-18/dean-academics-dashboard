@@ -1,4 +1,3 @@
-// Developed by Vishwajeet Bhamre on 2026-06-09 22:24
 // Constants & Initial Budgets
 const BUDGETS = {
     AAF: 6200000, // 62 Lakhs

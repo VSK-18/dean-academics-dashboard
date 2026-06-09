@@ -1,4 +1,3 @@
-// Developed by Vishwajeet Bhamre on 2026-06-09 22:24
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');

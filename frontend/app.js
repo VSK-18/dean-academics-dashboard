@@ -44,6 +44,18 @@ const tabManageBtn = document.getElementById('tab-manage-btn');
 const panelAnalytics = document.getElementById('panel-analytics');
 const panelManage = document.getElementById('panel-manage');
 
+// Form inputs
+const proposalCategory = document.getElementById('proposal-category');
+const proposalDept = document.getElementById('proposal-dept');
+const proposalSubhead = document.getElementById('proposal-subhead');
+const proposalComp = document.getElementById('proposal-comp');
+const proposalAmountProposed = document.getElementById('proposal-amount-proposed');
+const proposalActualExpenditure = document.getElementById('proposal-actual-expenditure');
+const proposalMonth = document.getElementById('proposal-month');
+const proposalDate = document.getElementById('proposal-date');
+const proposalRemarks = document.getElementById('proposal-remarks');
+const fastFillingToggle = document.getElementById('fast-filling-toggle');
+
 // Chart Variables
 let utilizationChart = null;
 let ratioChart = null;
@@ -58,6 +70,46 @@ function formatCurrency(amount) {
     return `₹${amount.toLocaleString('en-IN')}`;
 }
 
+// Subhead lists
+const subheadsAAF = [
+    { value: 'AAF/1', label: 'AAF/1: Affiliation Fees' },
+    { value: 'AAF/2', label: 'AAF/2: Academic Audit Expenses' },
+    { value: 'AAF/3', label: 'AAF/3: Meeting Expenses' },
+    { value: 'AAF/4', label: 'AAF/4: Printing R&R brochures' },
+    { value: 'AAF/5', label: 'AAF/5: Guest lectures & workshops' },
+    { value: 'AAF/6', label: 'AAF/6: Any other expenses' }
+];
+
+const subheadsEQA = [
+    { value: 'EQA/1', label: 'EQA/1: Lab Equipment' },
+    { value: 'EQA/2', label: 'EQA/2: Any other expenses' }
+];
+
+// Populate Subheads based on Category choice
+function populateSubheads() {
+    const category = proposalCategory.value;
+    proposalSubhead.innerHTML = '';
+    const subheads = category === 'AAF' ? subheadsAAF : subheadsEQA;
+    subheads.forEach(sh => {
+        const opt = document.createElement('option');
+        opt.value = sh.value;
+        opt.textContent = sh.label;
+        proposalSubhead.appendChild(opt);
+    });
+}
+
+// Update sequential ID placeholder in the header
+function updateGeneratedIdPlaceholder() {
+    const hiddenId = document.getElementById('proposal-id-hidden').value;
+    if (hiddenId) return; // Editing mode
+    
+    const category = proposalCategory.value;
+    const categoryProposals = proposals.filter(p => p.category === category);
+    const count = categoryProposals.length + 1;
+    const generatedId = `${count}/${category}`;
+    formPanelTitle.textContent = `Create Proposal #${generatedId}`;
+}
+
 // Fetch Proposals from API
 async function fetchProposals() {
     try {
@@ -70,14 +122,15 @@ async function fetchProposals() {
     }
 }
 
-// Check/Update Stats and KPI panels
+// Update KPI cards
 function updateKPICards() {
     let aafUtilized = 0;
     let eqaUtilized = 0;
 
     proposals.forEach(p => {
-        if (p.category === 'AAF') aafUtilized += parseFloat(p.utilization);
-        if (p.category === 'EQA') eqaUtilized += parseFloat(p.utilization);
+        const amt = parseFloat(p.actualExpenditure || 0);
+        if (p.category === 'AAF') aafUtilized += amt;
+        if (p.category === 'EQA') eqaUtilized += amt;
     });
 
     const aafPercent = Math.min(100, (aafUtilized / BUDGETS.AAF) * 100);
@@ -95,6 +148,10 @@ function updateKPICards() {
     // Totals
     const totalSanctioned = BUDGETS.AAF + BUDGETS.EQA;
     document.getElementById('stat-total-budget').textContent = formatCurrency(totalSanctioned);
+    
+    const totalUtilized = aafUtilized + eqaUtilized;
+    const totalPercent = Math.min(100, (totalUtilized / totalSanctioned) * 100);
+    document.getElementById('stat-total-percent').textContent = `${totalPercent.toFixed(1)}% Utilized`;
 }
 
 // Initializing Charts
@@ -103,10 +160,10 @@ function initCharts() {
     
     const depts = [...new Set(proposals.map(p => p.dept))];
     const sanctionedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + p.amount, 0);
+        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.amountProposed || 0), 0);
     });
     const utilizedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + p.utilization, 0);
+        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.actualExpenditure || 0), 0);
     });
 
     utilizationChart = new Chart(ctxBar, {
@@ -115,14 +172,14 @@ function initCharts() {
             labels: depts.length ? depts : ['No Data'],
             datasets: [
                 {
-                    label: 'Sanctioned / Proposed (₹)',
+                    label: 'Proposed (₹)',
                     data: sanctionedData.length ? sanctionedData : [0],
                     backgroundColor: '#6366f1',
                     borderRadius: 6,
                     borderWidth: 0
                 },
                 {
-                    label: 'Utilized (₹)',
+                    label: 'Actual Expenditure (₹)',
                     data: utilizedData.length ? utilizedData : [0],
                     backgroundColor: '#06b6d4',
                     borderRadius: 6,
@@ -182,10 +239,10 @@ function updateCharts() {
 
     const depts = [...new Set(proposals.map(p => p.dept))];
     const sanctionedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + p.amount, 0);
+        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.amountProposed || 0), 0);
     });
     const utilizedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + p.utilization, 0);
+        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.actualExpenditure || 0), 0);
     });
 
     utilizationChart.data.labels = depts.length ? depts : ['No Data'];
@@ -200,8 +257,9 @@ function renderProposals() {
     proposalsList.innerHTML = '';
     
     const filtered = proposals.filter(p => {
-        const matchesQuery = p.comp.toLowerCase().includes(activeFilters.query.toLowerCase()) || 
-                             p.dept.toLowerCase().includes(activeFilters.query.toLowerCase());
+        const matchesQuery = (p.comp || '').toLowerCase().includes(activeFilters.query.toLowerCase()) || 
+                             (p.dept || '').toLowerCase().includes(activeFilters.query.toLowerCase()) || 
+                             (p.subHead || '').toLowerCase().includes(activeFilters.query.toLowerCase());
         const matchesCategory = activeFilters.category === 'all' || p.category === activeFilters.category;
         
         const dateVal = new Date(p.date);
@@ -218,7 +276,7 @@ function renderProposals() {
     if (filtered.length === 0) {
         proposalsList.innerHTML = `
             <tr>
-                <td colspan="${currentUserRole === 'admin' ? 8 : 7}" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                <td colspan="${currentUserRole === 'admin' ? 10 : 9}" style="text-align: center; color: var(--text-muted); padding: 2rem;">
                     <i class="fa-regular fa-folder-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
                     No proposals match the current filter criteria.
                 </td>
@@ -228,14 +286,24 @@ function renderProposals() {
     }
 
     filtered.forEach(p => {
-        const utilRatio = p.amount > 0 ? (p.utilization / p.amount) : 0;
-        let statusBadge = '';
-        if (utilRatio === 1) {
-            statusBadge = `<span class="badge badge-success">Fully Utilized</span>`;
+        const proposed = parseFloat(p.amountProposed || 0);
+        const actual = parseFloat(p.actualExpenditure || 0);
+        const utilRatio = proposed > 0 ? (actual / proposed) : 0;
+        
+        let statusClass = 'badge-aaf';
+        let statusText = 'Active';
+        if (actual > proposed) {
+            statusClass = 'badge-warning';
+            statusText = `Overspent (${Math.round(utilRatio * 100)}%)`;
+        } else if (utilRatio === 1) {
+            statusClass = 'badge-success';
+            statusText = 'Fully Utilized';
         } else if (utilRatio > 0.7) {
-            statusBadge = `<span class="badge badge-warning">High Util. (${Math.round(utilRatio * 100)}%)</span>`;
+            statusClass = 'badge-warning';
+            statusText = `High Util. (${Math.round(utilRatio * 100)}%)`;
         } else {
-            statusBadge = `<span class="badge badge-aaf">Active (${Math.round(utilRatio * 100)}%)</span>`;
+            statusClass = 'badge-aaf';
+            statusText = `Active (${Math.round(utilRatio * 100)}%)`;
         }
 
         const tr = document.createElement('tr');
@@ -243,14 +311,16 @@ function renderProposals() {
         tr.innerHTML = `
             <td><strong>${p.id}</strong></td>
             <td><span class="badge ${p.category === 'AAF' ? 'badge-aaf' : 'badge-eqa'}">${p.category}</span></td>
+            <td><code style="font-weight: 600; color: var(--primary);">${p.subHead || ''}</code></td>
             <td>
                 <div style="font-weight: 600;">${p.dept}</div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary);">${p.comp}</div>
             </td>
             <td>${new Date(p.date).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'})}</td>
-            <td>₹${parseFloat(p.amount).toLocaleString('en-IN')}</td>
-            <td>₹${parseFloat(p.utilization).toLocaleString('en-IN')}</td>
-            <td>${statusBadge}</td>
+            <td>₹${proposed.toLocaleString('en-IN')}</td>
+            <td>₹${actual.toLocaleString('en-IN')}</td>
+            <td>${p.month || ''}</td>
+            <td style="font-size: 0.8rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${p.remarks || ''}">${p.remarks || ''}</td>
             ${currentUserRole === 'admin' ? `
             <td>
                 <div class="action-buttons">
@@ -275,12 +345,17 @@ window.editProposal = function(id) {
 
     formPanelTitle.textContent = `Edit Proposal #${proposal.id}`;
     document.getElementById('proposal-id-hidden').value = proposal.id;
-    document.getElementById('proposal-category').value = proposal.category;
-    document.getElementById('proposal-dept').value = proposal.dept;
-    document.getElementById('proposal-comp').value = proposal.comp;
-    document.getElementById('proposal-amount').value = proposal.amount;
-    document.getElementById('proposal-utilization').value = proposal.utilization;
-    document.getElementById('proposal-date').value = proposal.date;
+    proposalCategory.value = proposal.category;
+    populateSubheads();
+    
+    proposalDept.value = proposal.dept;
+    proposalSubhead.value = proposal.subHead;
+    proposalComp.value = proposal.comp;
+    proposalAmountProposed.value = proposal.amountProposed;
+    proposalActualExpenditure.value = proposal.actualExpenditure;
+    proposalMonth.value = proposal.month;
+    proposalDate.value = proposal.date;
+    proposalRemarks.value = proposal.remarks || '';
 
     cancelFormBtn.style.display = 'block';
 };
@@ -308,9 +383,15 @@ window.deleteProposal = async function(id) {
 function resetFormState() {
     formPanelTitle.textContent = "Create Budget Proposal";
     document.getElementById('proposal-id-hidden').value = "";
-    proposalForm.reset();
-    document.getElementById('proposal-date').value = "2026-04-20";
+    
+    // Clear description, amount, actual exp, remarks
+    proposalComp.value = "";
+    proposalAmountProposed.value = "";
+    proposalActualExpenditure.value = "";
+    proposalRemarks.value = "";
+    
     cancelFormBtn.style.display = 'none';
+    updateGeneratedIdPlaceholder();
 }
 
 // Render everything
@@ -318,10 +399,17 @@ function renderAll() {
     updateKPICards();
     renderProposals();
     updateCharts();
+    updateGeneratedIdPlaceholder();
 }
 
 // Setup Event Listeners
 function setupEvents() {
+    // Populate subheads initially and when category changes
+    proposalCategory.addEventListener('change', () => {
+        populateSubheads();
+        updateGeneratedIdPlaceholder();
+    });
+
     // Filtering
     searchInput.addEventListener('input', (e) => {
         activeFilters.query = e.target.value;
@@ -368,14 +456,28 @@ function setupEvents() {
         if (currentUserRole !== 'admin') return;
         
         const hiddenId = document.getElementById('proposal-id-hidden').value;
-        const category = document.getElementById('proposal-category').value;
-        const dept = document.getElementById('proposal-dept').value;
-        const comp = document.getElementById('proposal-comp').value;
-        const amount = parseFloat(document.getElementById('proposal-amount').value);
-        const utilization = parseFloat(document.getElementById('proposal-utilization').value);
-        const date = document.getElementById('proposal-date').value;
+        const category = proposalCategory.value;
+        const dept = proposalDept.value;
+        const comp = proposalComp.value.trim();
+        const subHead = proposalSubhead.value;
+        const amountProposed = parseFloat(proposalAmountProposed.value);
+        const actualExpenditure = parseFloat(proposalActualExpenditure.value || 0);
+        const month = proposalMonth.value;
+        const date = proposalDate.value;
+        const remarks = proposalRemarks.value.trim();
 
-        const payload = { category, dept, comp, amount, utilization, date };
+        // client-side validation logic
+        if (amountProposed < 0 || actualExpenditure < 0) {
+            alert("Proposed amount and actual expenditure cannot be negative.");
+            return;
+        }
+
+        if (actualExpenditure > amountProposed) {
+            const proceed = confirm(`Warning: Actual expenditure (${actualExpenditure}) is greater than the Proposed amount (${amountProposed}). Do you want to save this proposal anyway?`);
+            if (!proceed) return;
+        }
+
+        const payload = { category, dept, comp, subHead, amountProposed, actualExpenditure, month, date, remarks };
 
         try {
             if (hiddenId) {
@@ -385,7 +487,13 @@ function setupEvents() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (response.ok) await fetchProposals();
+                if (response.ok) {
+                    await fetchProposals();
+                    resetFormState();
+                } else {
+                    const errObj = await response.json();
+                    alert(`Error: ${errObj.error}`);
+                }
             } else {
                 // Add Mode (POST)
                 const categoryProposals = proposals.filter(p => p.category === category);
@@ -397,13 +505,29 @@ function setupEvents() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: newId, ...payload })
                 });
-                if (response.ok) await fetchProposals();
+                if (response.ok) {
+                    await fetchProposals();
+                    
+                    if (fastFillingToggle.checked) {
+                        // Fast Filling Mode: clear only specific inputs and keep the rest
+                        proposalComp.value = "";
+                        proposalAmountProposed.value = "";
+                        proposalActualExpenditure.value = "";
+                        proposalRemarks.value = "";
+                        // Auto increment count and focus on comp
+                        updateGeneratedIdPlaceholder();
+                        proposalComp.focus();
+                    } else {
+                        resetFormState();
+                    }
+                } else {
+                    const errObj = await response.json();
+                    alert(`Error: ${errObj.error}`);
+                }
             }
         } catch (err) {
             console.error('Error saving proposal:', err);
         }
-
-        resetFormState();
     });
 
     // Auth Form Login Submit
@@ -497,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dateStartInput.value = activeFilters.startDate;
     dateEndInput.value = activeFilters.endDate;
 
+    populateSubheads();
     setupEvents();
     initCharts();
     checkSession();

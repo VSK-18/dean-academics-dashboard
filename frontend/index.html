@@ -171,10 +171,15 @@
         <section class="split-grid fade-in" id="panel-manage" style="display: none; animation-delay: 0.2s;">
             <!-- Persistent Add / Edit Form (Admin Only) -->
             <div class="glass-card form-card admin-only" id="form-sidebar-container">
-                <h3 id="form-panel-title" style="margin-bottom: 1.25rem; font-size: 1.2rem;">Create Budget Proposal</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                    <h3 id="form-panel-title" style="font-size: 1.2rem; margin: 0;">Create Budget Proposal</h3>
+                    <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" id="fast-filling-toggle"> Fast Entry
+                    </label>
+                </div>
                 <form id="proposal-form">
                     <input type="hidden" id="proposal-id-hidden">
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.8rem;">
                         <div class="form-group">
                             <label for="proposal-category">Budget Category</label>
                             <select id="proposal-category" required>
@@ -185,30 +190,63 @@
                         <div class="form-group">
                             <label for="proposal-dept">Department / Component</label>
                             <select id="proposal-dept" required>
-                                <option value="Computer">Computer Department</option>
-                                <option value="IT">IT Department</option>
-                                <option value="E&TC">E&TC Department</option>
-                                <option value="Mechanical">Mechanical Department</option>
-                                <option value="Civil">Civil Department</option>
-                                <option value="All Departments">All Departments (General)</option>
-                                <option value="Workshop">Workshop</option>
+                                <option value="All">All (Common Expense)</option>
+                                <option value="Applied Science and Humanitiees">Applied Science and Humanitiees (AS&H)</option>
+                                <option value="Civil">Civil</option>
+                                <option value="Computer Engineering">Computer Engineering (COMP)</option>
+                                <option value="CSE - AI-ML">CSE - AI-ML (CSE)</option>
+                                <option value="Computer Engineering - RL">Computer Engineering - RL (COMP(R))</option>
+                                <option value="Electronics and Telecommunication">Electronics and Telecommunication (ETC)</option>
+                                <option value="Information Technology">Information Technology (IT)</option>
+                                <option value="Mechanical Engineering and Workshop">Mechanical Engineering and Workshop (MECH)</option>
+                                <option value="Master of Computer Applications">Master of Computer Applications (MCA)</option>
+                                <option value="Bachelor of Vocation">Bachelor of Vocation (BVOC)</option>
+                                <option value="MDS">MDS</option>
+                                <option value="Contigency">Contigency</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="proposal-comp">Requirement / Description</label>
-                            <input type="text" id="proposal-comp" placeholder="e.g. AC Installation" required>
+                            <label for="proposal-subhead">Major/Minor (Sub-Head)</label>
+                            <select id="proposal-subhead" required>
+                                <!-- Populated dynamically based on category -->
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label for="proposal-amount">Sanctioned Amount (₹)</label>
-                            <input type="number" id="proposal-amount" min="0" placeholder="e.g. 5000" required>
+                            <label for="proposal-comp">Brief Description</label>
+                            <input type="text" id="proposal-comp" placeholder="e.g. 14th AC Meeting" required>
                         </div>
                         <div class="form-group">
-                            <label for="proposal-utilization">Utilized Amount (₹)</label>
-                            <input type="number" id="proposal-utilization" min="0" placeholder="e.g. 3500" required>
+                            <label for="proposal-amount-proposed">Amount Proposed (₹)</label>
+                            <input type="number" id="proposal-amount-proposed" min="0" placeholder="e.g. 76000" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-actual-expenditure">Actual Expenditure (₹)</label>
+                            <input type="number" id="proposal-actual-expenditure" min="0" placeholder="e.g. 76000">
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-month">Month</label>
+                            <select id="proposal-month" required>
+                                <option value="April">April</option>
+                                <option value="May">May</option>
+                                <option value="June">June</option>
+                                <option value="July">July</option>
+                                <option value="August">August</option>
+                                <option value="September">September</option>
+                                <option value="October">October</option>
+                                <option value="November">November</option>
+                                <option value="December">December</option>
+                                <option value="January">January</option>
+                                <option value="February">February</option>
+                                <option value="March">March</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="proposal-date">Date of Entry</label>
                             <input type="date" id="proposal-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proposal-remarks">Remarks (Optional)</label>
+                            <input type="text" id="proposal-remarks" placeholder="Remarks if any">
                         </div>
                         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
                             <button type="button" class="btn btn-secondary" id="btn-cancel-form" style="flex: 1; display: none;">Clear</button>
@@ -229,8 +267,8 @@
 
             <!-- Proposals Table and Controls -->
             <div class="glass-card" style="flex-grow: 1;">
-                <div class="controls-bar" style="margin-bottom: 1.5rem;">
-                    <div class="search-filter-group">
+                <div class="controls-bar" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div class="search-filter-group" style="display: flex; gap: 0.5rem;">
                         <input type="text" id="search-query" class="search-input" placeholder="Search proposals...">
                         <select id="filter-category" class="search-input" style="max-width: 140px; cursor: pointer;">
                             <option value="all">All Budgets</option>
@@ -239,13 +277,16 @@
                         </select>
                     </div>
                     
-                    <div class="date-filters">
+                    <div class="date-filters" style="display: flex; align-items: center; gap: 0.5rem;">
                         <input type="date" id="filter-date-start" value="2026-04-01">
                         <span style="color: var(--text-muted);">to</span>
                         <input type="date" id="filter-date-end" value="2026-05-15">
                         <button class="btn btn-secondary" id="btn-reset-filters" title="Reset Filters" style="padding: 0.65rem 0.8rem;">
                             <i class="fa-solid fa-rotate-left"></i>
                         </button>
+                        <a href="/api/export" class="btn btn-primary" id="btn-export-excel" style="padding: 0.65rem 1rem; display: flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                            <i class="fa-solid fa-file-excel"></i> Download Excel
+                        </a>
                     </div>
                 </div>
 
@@ -256,11 +297,13 @@
                             <tr>
                                 <th style="width: 80px;">ID</th>
                                 <th>Category</th>
+                                <th>Sub-head</th>
                                 <th>Component / Dept</th>
                                 <th>Date</th>
-                                <th>Sanctioned</th>
-                                <th>Utilized</th>
-                                <th>Status</th>
+                                <th>Proposed</th>
+                                <th>Actual Exp.</th>
+                                <th>Month</th>
+                                <th>Remarks</th>
                                 <th style="width: 100px; text-align: center;" id="th-actions" class="admin-only">Actions</th>
                             </tr>
                         </thead>

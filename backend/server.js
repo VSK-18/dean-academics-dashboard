@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
+const { exportExcel } = require('./excel_exporter');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -124,39 +125,33 @@ app.delete('/api/proposals/:id', async (req, res) => {
 app.get('/api/export', async (req, res) => {
     try {
         const proposals = await Proposal.find({});
-        const jsonPath = path.join(__dirname, 'temp_proposals.json');
-        const templatePath = 'C:\\Users\\bhamr\\Downloads\\AAF-EQA Budget Monitor_2026-27.xlsx';
+        const templatePath = path.join(__dirname, 'templates', 'AAF-EQA Budget Monitor_2026-27.xlsx');
         const outputPath = path.join(__dirname, 'output_excel.xlsx');
         
-        fs.writeFileSync(jsonPath, JSON.stringify(proposals, null, 2), 'utf8');
+        await exportExcel(proposals, templatePath, outputPath);
         
-        const scriptPath = path.join(__dirname, 'export_excel.py');
-        exec(`python "${scriptPath}" "${jsonPath}" "${templatePath}" "${outputPath}"`, (error, stdout, stderr) => {
-            if (error) {
-                console.error('Export Script Error:', error);
-                console.error('stderr:', stderr);
-                return res.status(500).json({ error: 'Failed to run excel export helper: ' + error.message });
+        res.download(outputPath, 'AAF-EQA Budget Monitor_2026-27.xlsx', (err) => {
+            // Clean up temp output file
+            try {
+                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+            } catch (cleanErr) {
+                console.error('Error cleaning up temp file:', cleanErr);
             }
-            
-            res.download(outputPath, 'AAF-EQA Budget Monitor_2026-27.xlsx', (err) => {
-                // Clean up temp files
-                try {
-                    if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath);
-                    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-                } catch (cleanErr) {
-                    console.error('Error cleaning up temp files:', cleanErr);
-                }
-                if (err) {
-                    console.error('Download error:', err);
-                }
-            });
+            if (err) {
+                console.error('Download error:', err);
+            }
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Excel Export Error:', err);
+        res.status(500).json({ error: 'Failed to run excel export helper: ' + err.message });
     }
 });
 
 // Start Server
-app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server is running at http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;

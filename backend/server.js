@@ -17,10 +17,29 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 
 // MongoDB connection using Mongoose
 mongoose.connect(MONGO_URI)
-    .then(() => console.log('Connected to MongoDB successfully.'))
+    .then(async () => {
+        console.log('Connected to MongoDB successfully.');
+        await seedDatabase();
+    })
     .catch(err => console.error('MongoDB connection error:', err));
 
-// Mongoose Schema & Model
+// Mongoose Schema & Models
+const departmentSchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true },
+    code: { type: String, required: true, unique: true },
+    units: { type: Number, required: true }
+});
+
+const Department = mongoose.model('Department', departmentSchema);
+
+const budgetHeadSchema = new mongoose.Schema({
+    code: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    category: { type: String, required: true } // 'AAF' or 'EQA'
+});
+
+const BudgetHead = mongoose.model('BudgetHead', budgetHeadSchema);
+
 const proposalSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     category: { type: String, required: true },
@@ -35,6 +54,257 @@ const proposalSchema = new mongoose.Schema({
 });
 
 const Proposal = mongoose.model('Proposal', proposalSchema);
+
+const DEFAULT_DEPARTMENTS = [
+    { name: "Applied Science and Humanities", code: "ASH", units: 17 },
+    { name: "Civil", code: "CIVIL", units: 5 },
+    { name: "Computer Engineering", code: "COMP", units: 18 },
+    { name: "CSE - AI-ML", code: "CSE", units: 7 },
+    { name: "Computer Engineering - RL", code: "COMP(R)", units: 4 },
+    { name: "Electronics and Telecommunication", code: "ETC", units: 11 },
+    { name: "Information Technology", code: "IT", units: 10 },
+    { name: "Mechanical Engineering and Workshop", code: "MECH", units: 18 },
+    { name: "Master of Computer Applications", code: "MCA", units: 3 },
+    { name: "Bachelor of Vocation", code: "BVOC", units: 1.5 },
+    { name: "MDS", code: "MDS", units: 2.5 }
+];
+
+const DEFAULT_BUDGET_HEADS = [
+    { code: "AAF/1", name: "Affiliation Fees to DTE, SPPU, AICTE, FRA, ARA, and similar regulating Bodies", category: "AAF" },
+    { code: "AAF/2", name: "Academic Audit Expenses", category: "AAF" },
+    { code: "AAF/3", name: "Expenses of Academic Council, BOS, DAB, PAC and similar meetings", category: "AAF" },
+    { code: "AAF/4", name: "Printing of all R&R brochures, Booklets", category: "AAF" },
+    { code: "AAF/5", name: "Guest lectures, academic workshops", category: "AAF" },
+    { code: "AAF/6", name: "Any other expenses", category: "AAF" },
+    { code: "EQA/1", name: "Lab Equipment", category: "EQA" },
+    { code: "EQA/2", name: "Any other expenses", category: "EQA" }
+];
+
+async function seedDatabase() {
+    try {
+        const deptCount = await Department.countDocuments();
+        if (deptCount === 0) {
+            await Department.insertMany(DEFAULT_DEPARTMENTS);
+            console.log('Seeded default departments.');
+        }
+        
+        const headCount = await BudgetHead.countDocuments();
+        if (headCount === 0) {
+            await BudgetHead.insertMany(DEFAULT_BUDGET_HEADS);
+            console.log('Seeded default budget heads.');
+        }
+    } catch (err) {
+        console.error('Seeding database error:', err);
+    }
+}
+
+// Departments CRUD
+app.get('/api/departments', async (req, res) => {
+    try {
+        const departments = await Department.find({});
+        res.json(departments);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/departments/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, code, units } = req.body;
+    if (units !== undefined && Number(units) < 0) {
+        return res.status(400).json({ error: 'Units cannot be negative' });
+    }
+    try {
+        const updated = await Department.findByIdAndUpdate(
+            id,
+            { name, code, units: Number(units) },
+            { new: true }
+        );
+        res.json({ message: 'Department updated successfully', department: updated });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Budget Heads CRUD
+app.get('/api/budgetheads', async (req, res) => {
+    try {
+        const heads = await BudgetHead.find({});
+        res.json(heads);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/budgetheads', async (req, res) => {
+    const { code, name, category } = req.body;
+    if (!code || !name || !category) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    try {
+        const newHead = new BudgetHead({ code, name, category });
+        await newHead.save();
+        res.status(201).json({ message: 'Budget head created successfully', budgethead: newHead });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.delete('/api/budgetheads/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await BudgetHead.findByIdAndDelete(id);
+        res.json({ message: 'Budget head deleted successfully' });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Department-wise Stats Allocation API
+app.get('/api/stats/departments', async (req, res) => {
+    try {
+        const departments = await Department.find({}).lean();
+        const proposals = await Proposal.find({}).lean();
+
+        // Calculate total units (excluding contingency)
+        let totalUnits = 0;
+        departments.forEach(d => {
+            totalUnits += d.units;
+        });
+
+        // Totals
+        const aafTotal = 6200000;
+        const eqaTotal = 10000000;
+        const aafContingencyTotal = aafTotal * 0.1;
+        const eqaContingencyTotal = eqaTotal * 0.1;
+        const aafDividedTotal = aafTotal * 0.9;
+        const eqaDividedTotal = eqaTotal * 0.9;
+
+        // Initialize stats for each department
+        const deptStats = departments.map(d => {
+            const weight = totalUnits > 0 ? d.units / totalUnits : 0;
+            return {
+                _id: d._id,
+                name: d.name,
+                code: d.code,
+                units: d.units,
+                weight: weight,
+                allocatedAAF: aafDividedTotal * weight,
+                allocatedEQA: eqaDividedTotal * weight,
+                proposedAAF: 0,
+                proposedEQA: 0,
+                utilizedAAF: 0,
+                utilizedEQA: 0
+            };
+        });
+
+        const contingency = {
+            name: "Contingency",
+            code: "Contingency",
+            units: 0,
+            weight: 0.1,
+            allocatedAAF: aafContingencyTotal,
+            allocatedEQA: eqaContingencyTotal,
+            proposedAAF: 0,
+            proposedEQA: 0,
+            utilizedAAF: 0,
+            utilizedEQA: 0
+        };
+
+        const findDeptStat = (deptValue) => {
+            const dv = String(deptValue).trim().toLowerCase();
+            return deptStats.find(d => 
+                d.code.toLowerCase() === dv || 
+                d.name.toLowerCase() === dv ||
+                dv.includes(d.code.toLowerCase()) ||
+                d.name.toLowerCase().includes(dv)
+            );
+        };
+
+        proposals.forEach(p => {
+            const amtProposed = Number(p.amountProposed) || 0;
+            const amtUtilized = Number(p.actualExpenditure) || 0;
+            const isAAF = p.category === 'AAF';
+            const isEQA = p.category === 'EQA';
+            const deptLower = String(p.dept).trim().toLowerCase();
+
+            if (deptLower === 'all') {
+                // Split proportionally among all departments
+                deptStats.forEach(d => {
+                    if (isAAF) {
+                        d.proposedAAF += amtProposed * d.weight;
+                        d.utilizedAAF += amtUtilized * d.weight;
+                    } else if (isEQA) {
+                        d.proposedEQA += amtProposed * d.weight;
+                        d.utilizedEQA += amtUtilized * d.weight;
+                    }
+                });
+            } else if (deptLower === 'contigency' || deptLower === 'contingency') {
+                if (isAAF) {
+                    contingency.proposedAAF += amtProposed;
+                    contingency.utilizedAAF += amtUtilized;
+                } else if (isEQA) {
+                    contingency.proposedEQA += amtProposed;
+                    contingency.utilizedEQA += amtUtilized;
+                }
+            } else {
+                // Post directly to specific department
+                const target = findDeptStat(p.dept);
+                if (target) {
+                    if (isAAF) {
+                        target.proposedAAF += amtProposed;
+                        target.utilizedAAF += amtUtilized;
+                    } else if (isEQA) {
+                        target.proposedEQA += amtProposed;
+                        target.utilizedEQA += amtUtilized;
+                    }
+                }
+            }
+        });
+
+        // Compute college totals
+        let totalProposedAAF = 0;
+        let totalProposedEQA = 0;
+        let totalUtilizedAAF = 0;
+        let totalUtilizedEQA = 0;
+
+        deptStats.forEach(d => {
+            totalProposedAAF += d.proposedAAF;
+            totalProposedEQA += d.proposedEQA;
+            totalUtilizedAAF += d.utilizedAAF;
+            totalUtilizedEQA += d.utilizedEQA;
+        });
+
+        // Add contingency to totals
+        totalProposedAAF += contingency.proposedAAF;
+        totalProposedEQA += contingency.proposedEQA;
+        totalUtilizedAAF += contingency.utilizedAAF;
+        totalUtilizedEQA += contingency.utilizedEQA;
+
+        const collegeSummary = {
+            aaf: {
+                total: aafTotal,
+                proposed: totalProposedAAF,
+                utilized: totalUtilizedAAF,
+                balance: aafTotal - totalUtilizedAAF
+            },
+            eqa: {
+                total: eqaTotal,
+                proposed: totalProposedEQA,
+                utilized: totalUtilizedEQA,
+                balance: eqaTotal - totalUtilizedEQA
+            }
+        };
+
+        res.json({
+            departments: deptStats,
+            contingency,
+            collegeSummary
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // API Routes
 

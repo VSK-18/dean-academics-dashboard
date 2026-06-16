@@ -691,4 +691,27 @@ tr:hover td {
     top: 2rem;
 }
 
+/* Department-wise Budget Panel Styling */
+#panel-departments {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+#panel-departments select,
+#panel-departments input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    outline: none;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+#panel-departments select:focus,
+#panel-departments input:focus {
+    border-color: var(--primary) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
 

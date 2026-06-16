@@ -8,6 +8,8 @@ const API_BASE = '/api/proposals';
 
 // App State
 let proposals = [];
+let departments = [];
+let budgetheads = [];
 let activeFilters = {
     query: '',
     category: 'all',
@@ -41,8 +43,10 @@ const userRoleIcon = document.getElementById('user-role-icon');
 // Tabs DOM Elements
 const tabAnalyticsBtn = document.getElementById('tab-analytics-btn');
 const tabManageBtn = document.getElementById('tab-manage-btn');
+const tabDepartmentsBtn = document.getElementById('tab-departments-btn');
 const panelAnalytics = document.getElementById('panel-analytics');
 const panelManage = document.getElementById('panel-manage');
+const panelDepartments = document.getElementById('panel-departments');
 
 // Form inputs
 const proposalCategory = document.getElementById('proposal-category');
@@ -70,30 +74,15 @@ function formatCurrency(amount) {
     return `₹${amount.toLocaleString('en-IN')}`;
 }
 
-// Subhead lists
-const subheadsAAF = [
-    { value: 'AAF/1', label: 'AAF/1: Affiliation Fees' },
-    { value: 'AAF/2', label: 'AAF/2: Academic Audit Expenses' },
-    { value: 'AAF/3', label: 'AAF/3: Meeting Expenses' },
-    { value: 'AAF/4', label: 'AAF/4: Printing R&R brochures' },
-    { value: 'AAF/5', label: 'AAF/5: Guest lectures & workshops' },
-    { value: 'AAF/6', label: 'AAF/6: Any other expenses' }
-];
-
-const subheadsEQA = [
-    { value: 'EQA/1', label: 'EQA/1: Lab Equipment' },
-    { value: 'EQA/2', label: 'EQA/2: Any other expenses' }
-];
-
 // Populate Subheads based on Category choice
 function populateSubheads() {
     const category = proposalCategory.value;
     proposalSubhead.innerHTML = '';
-    const subheads = category === 'AAF' ? subheadsAAF : subheadsEQA;
-    subheads.forEach(sh => {
+    const filteredHeads = budgetheads.filter(h => h.category === category);
+    filteredHeads.forEach(sh => {
         const opt = document.createElement('option');
-        opt.value = sh.value;
-        opt.textContent = sh.label;
+        opt.value = sh.code;
+        opt.textContent = `${sh.code}: ${sh.name}`;
         proposalSubhead.appendChild(opt);
     });
 }
@@ -110,6 +99,50 @@ function updateGeneratedIdPlaceholder() {
     formPanelTitle.textContent = `Create Proposal #${generatedId}`;
 }
 
+// Load Lookups on startup
+async function loadLookups() {
+    try {
+        const [deptRes, headsRes] = await Promise.all([
+            fetch('/api/departments'),
+            fetch('/api/budgetheads')
+        ]);
+        departments = deptRes.ok ? await deptRes.json() : [];
+        budgetheads = headsRes.ok ? await headsRes.json() : [];
+
+        populateDropdowns();
+    } catch (err) {
+        console.error('Error loading lookup data:', err);
+    }
+}
+
+function populateDropdowns() {
+    // Proposal department dropdown
+    proposalDept.innerHTML = `
+        <option value="All">All (Common Expense)</option>
+        <option value="Contingency">Contingency (10%)</option>
+    `;
+    departments.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.code;
+        opt.textContent = `${d.name} (${d.code})`;
+        proposalDept.appendChild(opt);
+    });
+
+    // Config department select dropdown
+    const configDeptSelect = document.getElementById('config-dept-select');
+    if (configDeptSelect) {
+        configDeptSelect.innerHTML = '';
+        departments.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d._id;
+            opt.textContent = `${d.name} (${d.code}) - ${d.units} Units`;
+            configDeptSelect.appendChild(opt);
+        });
+    }
+
+    populateSubheads();
+}
+
 // Fetch Proposals from API
 async function fetchProposals() {
     try {
@@ -122,36 +155,109 @@ async function fetchProposals() {
     }
 }
 
-// Update KPI cards
-function updateKPICards() {
-    let aafUtilized = 0;
-    let eqaUtilized = 0;
+// Fetch Department Stats & Render Table and KPI Cards
+async function renderDepartmentStats() {
+    try {
+        const response = await fetch('/api/stats/departments');
+        if (!response.ok) throw new Error('Failed to fetch department stats');
+        const data = await response.json();
 
-    proposals.forEach(p => {
-        const amt = parseFloat(p.actualExpenditure || 0);
-        if (p.category === 'AAF') aafUtilized += amt;
-        if (p.category === 'EQA') eqaUtilized += amt;
-    });
+        // Update total units display
+        let totalUnits = 0;
+        data.departments.forEach(d => totalUnits += d.units);
+        const totalUnitsDisplay = document.getElementById('total-units-display');
+        if (totalUnitsDisplay) totalUnitsDisplay.textContent = totalUnits.toFixed(1);
 
-    const aafPercent = Math.min(100, (aafUtilized / BUDGETS.AAF) * 100);
-    const eqaPercent = Math.min(100, (eqaUtilized / BUDGETS.EQA) * 100);
+        // Update department list table
+        const deptListEl = document.getElementById('departments-list');
+        if (!deptListEl) return;
+        deptListEl.innerHTML = '';
 
-    // Update Text Elements
-    document.getElementById('stat-aaf-utilized').textContent = formatCurrency(aafUtilized);
-    document.getElementById('stat-aaf-percent').textContent = `${aafPercent.toFixed(1)}%`;
-    document.getElementById('stat-aaf-progress').style.width = `${aafPercent}%`;
+        // Render normal departments
+        data.departments.forEach(d => {
+            const aafAlloc = d.allocatedAAF;
+            const aafUtil = d.utilizedAAF;
+            const aafBal = aafAlloc - aafUtil;
+            
+            const eqaAlloc = d.allocatedEQA;
+            const eqaUtil = d.utilizedEQA;
+            const eqaBal = eqaAlloc - eqaUtil;
 
-    document.getElementById('stat-eqa-utilized').textContent = formatCurrency(eqaUtilized);
-    document.getElementById('stat-eqa-percent').textContent = `${eqaPercent.toFixed(1)}%`;
-    document.getElementById('stat-eqa-progress').style.width = `${eqaPercent}%`;
+            const totalAlloc = aafAlloc + eqaAlloc;
+            const totalUtil = aafUtil + eqaUtil;
+            const utilPct = totalAlloc > 0 ? (totalUtil / totalAlloc) * 100 : 0;
 
-    // Totals
-    const totalSanctioned = BUDGETS.AAF + BUDGETS.EQA;
-    document.getElementById('stat-total-budget').textContent = formatCurrency(totalSanctioned);
-    
-    const totalUtilized = aafUtilized + eqaUtilized;
-    const totalPercent = Math.min(100, (totalUtilized / totalSanctioned) * 100);
-    document.getElementById('stat-total-percent').textContent = `${totalPercent.toFixed(1)}% Utilized`;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${d.name} (${d.code})</strong></td>
+                <td style="text-align: center;">${d.units}</td>
+                <td style="text-align: center;">${(d.weight * 100).toFixed(2)}%</td>
+                <td style="text-align: right;">₹${Math.round(aafAlloc).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; color: var(--warning);">₹${Math.round(aafUtil).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; color: ${aafBal >= 0 ? 'var(--success)' : 'var(--danger)'};">₹${Math.round(aafBal).toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${Math.round(eqaAlloc).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; color: var(--warning);">₹${Math.round(eqaUtil).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; color: ${eqaBal >= 0 ? 'var(--success)' : 'var(--danger)'};">₹${Math.round(eqaBal).toLocaleString('en-IN')}</td>
+                <td style="text-align: center;">
+                    <span class="badge ${utilPct > 100 ? 'badge-warning' : 'badge-success'}">${utilPct.toFixed(1)}%</span>
+                </td>
+            `;
+            deptListEl.appendChild(tr);
+        });
+
+        // Render Contingency row
+        const c = data.contingency;
+        const cTotalAlloc = c.allocatedAAF + c.allocatedEQA;
+        const cTotalUtil = c.utilizedAAF + c.utilizedEQA;
+        const cUtilPct = cTotalAlloc > 0 ? (cTotalUtil / cTotalAlloc) * 100 : 0;
+        const cTr = document.createElement('tr');
+        cTr.style.background = 'rgba(255, 255, 255, 0.02)';
+        cTr.innerHTML = `
+            <td><strong>Contingency Reserve (10%)</strong></td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">10.00%</td>
+            <td style="text-align: right;">₹${Math.round(c.allocatedAAF).toLocaleString('en-IN')}</td>
+            <td style="text-align: right; color: var(--warning);">₹${Math.round(c.utilizedAAF).toLocaleString('en-IN')}</td>
+            <td style="text-align: right; color: ${c.allocatedAAF - c.utilizedAAF >= 0 ? 'var(--success)' : 'var(--danger)'};">₹${Math.round(c.allocatedAAF - c.utilizedAAF).toLocaleString('en-IN')}</td>
+            <td style="text-align: right;">₹${Math.round(c.allocatedEQA).toLocaleString('en-IN')}</td>
+            <td style="text-align: right; color: var(--warning);">₹${Math.round(c.utilizedEQA).toLocaleString('en-IN')}</td>
+            <td style="text-align: right; color: ${c.allocatedEQA - c.utilizedEQA >= 0 ? 'var(--success)' : 'var(--danger)'};">₹${Math.round(c.allocatedEQA - c.utilizedEQA).toLocaleString('en-IN')}</td>
+            <td style="text-align: center;">
+                <span class="badge ${cUtilPct > 100 ? 'badge-warning' : 'badge-success'}">${cUtilPct.toFixed(1)}%</span>
+            </td>
+        `;
+        deptListEl.appendChild(cTr);
+
+        // Update overall KPI cards on dashboard
+        const summary = data.collegeSummary;
+        document.getElementById('stat-total-budget').textContent = formatCurrency(summary.aaf.total + summary.eqa.total);
+        
+        document.getElementById('stat-aaf-budget').textContent = formatCurrency(summary.aaf.total);
+        document.getElementById('stat-aaf-utilized').textContent = formatCurrency(summary.aaf.utilized);
+        const aafPct = (summary.aaf.utilized / summary.aaf.total) * 100;
+        document.getElementById('stat-aaf-percent').textContent = `${aafPct.toFixed(1)}%`;
+        document.getElementById('stat-aaf-progress').style.width = `${aafPct}%`;
+
+        document.getElementById('stat-eqa-budget').textContent = formatCurrency(summary.eqa.total);
+        document.getElementById('stat-eqa-utilized').textContent = formatCurrency(summary.eqa.utilized);
+        const eqaPct = (summary.eqa.utilized / summary.eqa.total) * 100;
+        document.getElementById('stat-eqa-percent').textContent = `${eqaPct.toFixed(1)}%`;
+        document.getElementById('stat-eqa-progress').style.width = `${eqaPct}%`;
+
+        const totalUtilized = summary.aaf.utilized + summary.eqa.utilized;
+        const totalBudget = summary.aaf.total + summary.eqa.total;
+        const totalPct = (totalUtilized / totalBudget) * 100;
+        document.getElementById('stat-total-percent').textContent = `${totalPct.toFixed(1)}% Utilized`;
+
+        // Update AAF split progress bar & text (Contingency vs Divided)
+        const divVal = summary.aaf.total * 0.9;
+        const conVal = summary.aaf.total * 0.1;
+        document.getElementById('stat-contingency-val').textContent = formatCurrency(conVal);
+        document.getElementById('stat-divided-val').textContent = formatCurrency(divVal);
+
+    } catch (err) {
+        console.error('Error rendering department stats:', err);
+    }
 }
 
 // Initializing Charts
@@ -396,7 +502,7 @@ function resetFormState() {
 
 // Render everything
 function renderAll() {
-    updateKPICards();
+    renderDepartmentStats();
     renderProposals();
     updateCharts();
     updateGeneratedIdPlaceholder();
@@ -556,8 +662,10 @@ function setupEvents() {
     tabAnalyticsBtn.addEventListener('click', () => {
         tabAnalyticsBtn.classList.add('active');
         tabManageBtn.classList.remove('active');
+        tabDepartmentsBtn.classList.remove('active');
         panelAnalytics.style.display = 'grid';
         panelManage.style.display = 'none';
+        panelDepartments.style.display = 'none';
         
         // Redraw charts because container size changes
         if (utilizationChart) utilizationChart.resize();
@@ -567,9 +675,93 @@ function setupEvents() {
     tabManageBtn.addEventListener('click', () => {
         tabManageBtn.classList.add('active');
         tabAnalyticsBtn.classList.remove('active');
+        tabDepartmentsBtn.classList.remove('active');
         panelAnalytics.style.display = 'none';
         panelManage.style.display = 'grid';
+        panelDepartments.style.display = 'none';
     });
+
+    tabDepartmentsBtn.addEventListener('click', () => {
+        tabDepartmentsBtn.classList.add('active');
+        tabAnalyticsBtn.classList.remove('active');
+        tabManageBtn.classList.remove('active');
+        panelAnalytics.style.display = 'none';
+        panelManage.style.display = 'none';
+        panelDepartments.style.display = 'grid';
+        
+        renderDepartmentStats();
+    });
+
+    // Admin Units Update Form
+    const deptUnitsForm = document.getElementById('dept-units-form');
+    if (deptUnitsForm) {
+        deptUnitsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (currentUserRole !== 'admin') return;
+            const deptId = document.getElementById('config-dept-select').value;
+            const units = parseFloat(document.getElementById('config-dept-units').value);
+            if (isNaN(units) || units < 0) {
+                alert('Please enter a valid non-negative unit count.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/departments/${deptId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ units })
+                });
+                if (response.ok) {
+                    alert('Department units updated successfully!');
+                    await loadLookups();
+                    await renderDepartmentStats();
+                    await fetchProposals(); // refresh table & charts
+                } else {
+                    const err = await response.json();
+                    alert(`Error updating department units: ${err.error}`);
+                }
+            } catch (err) {
+                console.error('Error updating units:', err);
+            }
+        });
+    }
+
+    // Admin Budget Head Add Form
+    const budgetHeadForm = document.getElementById('budget-head-form');
+    if (budgetHeadForm) {
+        budgetHeadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (currentUserRole !== 'admin') return;
+            const category = document.getElementById('config-head-category').value;
+            const code = document.getElementById('config-head-code').value.trim();
+            const name = document.getElementById('config-head-name').value.trim();
+
+            if (!code || !name) {
+                alert('Please enter a valid code and description.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/budgetheads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category, code, name })
+                });
+                if (response.ok) {
+                    alert('Budget head created successfully!');
+                    document.getElementById('config-head-code').value = '';
+                    document.getElementById('config-head-name').value = '';
+                    await loadLookups();
+                    await fetchProposals(); // refresh table & charts
+                } else {
+                    const err = await response.json();
+                    alert(`Error adding budget head: ${err.error}`);
+                }
+            } catch (err) {
+                console.error('Error adding budget head:', err);
+            }
+        });
+    }
 }
 
 // Perform Auth Layout Transition
@@ -617,16 +809,17 @@ function checkSession() {
 }
 
 // App Initialization
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     dateStartInput.value = activeFilters.startDate;
     dateEndInput.value = activeFilters.endDate;
 
-    populateSubheads();
+    await loadLookups();
     setupEvents();
     initCharts();
     checkSession();
     if (currentUserRole) {
         fetchProposals();
+        renderDepartmentStats();
     }
     // Set initial date on form
     document.getElementById('proposal-date').value = "2026-04-20";

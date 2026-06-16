@@ -138,6 +138,9 @@
             <button class="tab-btn active" id="tab-analytics-btn">
                 <i class="fa-solid fa-chart-pie"></i> Analytics & Charts
             </button>
+            <button class="tab-btn" id="tab-departments-btn">
+                <i class="fa-solid fa-building-user"></i> Department Budgets
+            </button>
             <button class="tab-btn" id="tab-manage-btn">
                 <i class="fa-solid fa-file-invoice-dollar"></i> Proposals Registry
             </button>
@@ -167,6 +170,84 @@
             </div>
         </section>
 
+        <!-- TAB 3: Department Budgets Panel (Hidden by default) -->
+        <section class="split-grid fade-in" id="panel-departments" style="display: none; animation-delay: 0.2s; grid-template-columns: 1fr;">
+            <!-- Department Summary Table -->
+            <div class="glass-card" style="width: 100%;">
+                <div class="card-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                    <h2 style="margin: 0;">Department-wise Budget Allocation & Utilization</h2>
+                    <span class="card-footer" style="padding: 0; font-size: 0.85rem; color: var(--text-secondary);">Weights based on Unit count (Total: <span id="total-units-display" style="font-weight: bold; color: var(--primary);">97</span> Units)</span>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th style="text-align: center;">Units</th>
+                                <th style="text-align: center;">Weight %</th>
+                                <th style="text-align: right;">AAF Allocated</th>
+                                <th style="text-align: right;">AAF Utilized</th>
+                                <th style="text-align: right;">AAF Balance</th>
+                                <th style="text-align: right;">EQA Allocated</th>
+                                <th style="text-align: right;">EQA Utilized</th>
+                                <th style="text-align: right;">EQA Balance</th>
+                                <th style="text-align: center;">Utilization %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="departments-list">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Configuration Sidebar (Admin Only) -->
+            <div class="admin-only" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; width: 100%;">
+                <!-- Edit Department Units -->
+                <div class="glass-card">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; margin-top: 0;"><i class="fa-solid fa-sliders"></i> Edit Department Units</h3>
+                    <form id="dept-units-form">
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="config-dept-select">Select Department</label>
+                            <select id="config-dept-select" required style="width: 100%; padding: 0.6rem; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 6px;">
+                                <!-- Dynamic options -->
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="config-dept-units">Unit Count</label>
+                            <input type="number" id="config-dept-units" step="0.1" min="0" placeholder="e.g. 17" required style="width: 100%; padding: 0.6rem; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 6px;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Update Units</button>
+                    </form>
+                </div>
+
+                <!-- Manage Budget Heads -->
+                <div class="glass-card">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; margin-top: 0;"><i class="fa-solid fa-list-check"></i> Add Budget Head</h3>
+                    <form id="budget-head-form" style="margin-bottom: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <div class="form-group">
+                                <label for="config-head-category">Category</label>
+                                <select id="config-head-category" required style="width: 100%; padding: 0.6rem; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 6px;">
+                                    <option value="AAF">AAF</option>
+                                    <option value="EQA">EQA</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="config-head-code">Code</label>
+                                <input type="text" id="config-head-code" placeholder="e.g. AAF/7" required style="width: 100%; padding: 0.6rem; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 6px;">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="config-head-name">Head Description</label>
+                            <input type="text" id="config-head-name" placeholder="e.g. Guest Sessions" required style="width: 100%; padding: 0.6rem; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 6px;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Add Budget Head</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
         <!-- TAB 2: Management Panel (Hidden by default, contains split-view form/table) -->
         <section class="split-grid fade-in" id="panel-manage" style="display: none; animation-delay: 0.2s;">
             <!-- Persistent Add / Edit Form (Admin Only) -->
@@ -191,18 +272,8 @@
                             <label for="proposal-dept">Department / Component</label>
                             <select id="proposal-dept" required>
                                 <option value="All">All (Common Expense)</option>
-                                <option value="Applied Science and Humanitiees">Applied Science and Humanitiees (AS&H)</option>
-                                <option value="Civil">Civil</option>
-                                <option value="Computer Engineering">Computer Engineering (COMP)</option>
-                                <option value="CSE - AI-ML">CSE - AI-ML (CSE)</option>
-                                <option value="Computer Engineering - RL">Computer Engineering - RL (COMP(R))</option>
-                                <option value="Electronics and Telecommunication">Electronics and Telecommunication (ETC)</option>
-                                <option value="Information Technology">Information Technology (IT)</option>
-                                <option value="Mechanical Engineering and Workshop">Mechanical Engineering and Workshop (MECH)</option>
-                                <option value="Master of Computer Applications">Master of Computer Applications (MCA)</option>
-                                <option value="Bachelor of Vocation">Bachelor of Vocation (BVOC)</option>
-                                <option value="MDS">MDS</option>
-                                <option value="Contigency">Contigency</option>
+                                <option value="Contingency">Contingency (10%)</option>
+                                <!-- Loaded dynamically -->
                             </select>
                         </div>
                         <div class="form-group">

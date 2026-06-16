@@ -50,22 +50,29 @@ function updateChartColors(theme) {
     const textColor = isLight ? '#0f172a' : '#f3f4f6';
     const tickColor = isLight ? '#475569' : '#9ca3af';
     const gridColor = isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.05)';
-    const borderColor = isLight ? '#ffffff' : 'rgba(17, 24, 39, 0.8)';
 
-    if (utilizationChart) {
-        utilizationChart.options.plugins.legend.labels.color = textColor;
-        utilizationChart.options.scales.x.ticks.color = tickColor;
-        utilizationChart.options.scales.x.grid.color = gridColor;
-        utilizationChart.options.scales.y.ticks.color = tickColor;
-        utilizationChart.options.scales.y.grid.color = gridColor;
-        utilizationChart.update();
-    }
+    const chartList = [
+        masterUtilizationChart,
+        contingencyChart,
+        aafUtilizationChart,
+        eqaUtilizationChart,
+        deptSubheadChart
+    ];
 
-    if (ratioChart) {
-        ratioChart.options.plugins.legend.labels.color = textColor;
-        ratioChart.data.datasets[0].borderColor = borderColor;
-        ratioChart.update();
-    }
+    chartList.forEach(chart => {
+        if (chart) {
+            chart.options.plugins.legend.labels.color = textColor;
+            if (chart.options.scales.x) {
+                chart.options.scales.x.ticks.color = tickColor;
+                chart.options.scales.x.grid.color = gridColor;
+            }
+            if (chart.options.scales.y) {
+                chart.options.scales.y.ticks.color = tickColor;
+                chart.options.scales.y.grid.color = gridColor;
+            }
+            chart.update();
+        }
+    });
 }
 
 // Dom Elements
@@ -111,8 +118,11 @@ const proposalRemarks = document.getElementById('proposal-remarks');
 const fastFillingToggle = document.getElementById('fast-filling-toggle');
 
 // Chart Variables
-let utilizationChart = null;
-let ratioChart = null;
+let masterUtilizationChart = null;
+let contingencyChart = null;
+let aafUtilizationChart = null;
+let eqaUtilizationChart = null;
+let deptSubheadChart = null;
 
 // Helpers: Formatting Currency
 function formatCurrency(amount) {
@@ -188,6 +198,22 @@ function populateDropdowns() {
             opt.textContent = `${d.name} (${d.code}) - ${d.units} Units`;
             configDeptSelect.appendChild(opt);
         });
+    }
+
+    // Explorer department select dropdown
+    const explorerDeptSelect = document.getElementById('explorer-dept-select');
+    if (explorerDeptSelect) {
+        const currentVal = explorerDeptSelect.value;
+        explorerDeptSelect.innerHTML = '';
+        departments.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.code;
+            opt.textContent = `${d.name} (${d.code})`;
+            explorerDeptSelect.appendChild(opt);
+        });
+        if (currentVal && departments.some(d => d.code === currentVal)) {
+            explorerDeptSelect.value = currentVal;
+        }
     }
 
     populateSubheads();
@@ -305,6 +331,9 @@ async function renderDepartmentStats() {
         document.getElementById('stat-contingency-val').textContent = formatCurrency(conVal);
         document.getElementById('stat-divided-val').textContent = formatCurrency(divVal);
 
+        // Update charts with live calculations data
+        updateCharts(data);
+
     } catch (err) {
         console.error('Error rendering department stats:', err);
     }
@@ -312,100 +341,284 @@ async function renderDepartmentStats() {
 
 // Initializing Charts
 function initCharts() {
-    const ctxBar = document.getElementById('utilizationChart').getContext('2d');
-    
-    const depts = [...new Set(proposals.map(p => p.dept))];
-    const sanctionedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.amountProposed || 0), 0);
-    });
-    const utilizedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.actualExpenditure || 0), 0);
-    });
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                labels: { color: '#f3f4f6', font: { family: 'Plus Jakarta Sans', weight: '500' } }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: '#9ca3af' },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+                ticks: { color: '#9ca3af' },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            }
+        }
+    };
 
-    utilizationChart = new Chart(ctxBar, {
+    // 1. Master Utilization Chart
+    const ctxMaster = document.getElementById('masterUtilizationChart').getContext('2d');
+    masterUtilizationChart = new Chart(ctxMaster, {
         type: 'bar',
         data: {
-            labels: depts.length ? depts : ['No Data'],
+            labels: [],
             datasets: [
                 {
-                    label: 'Proposed (₹)',
-                    data: sanctionedData.length ? sanctionedData : [0],
+                    label: 'Total Allocated (₹)',
+                    data: [],
                     backgroundColor: '#6366f1',
                     borderRadius: 6,
                     borderWidth: 0
                 },
                 {
-                    label: 'Actual Expenditure (₹)',
-                    data: utilizedData.length ? utilizedData : [0],
+                    label: 'Total Utilized (₹)',
+                    data: [],
                     backgroundColor: '#06b6d4',
                     borderRadius: 6,
                     borderWidth: 0
                 }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: { color: '#f3f4f6', font: { family: 'Plus Jakarta Sans', weight: '500' } }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: { color: '#9ca3af' },
-                    grid: { color: 'rgba(255,255,255,0.05)' }
-                },
-                y: {
-                    ticks: { color: '#9ca3af' },
-                    grid: { color: 'rgba(255,255,255,0.05)' }
-                }
-            }
-        }
+        options: chartOptions
     });
 
-    const ctxPie = document.getElementById('ratioChart').getContext('2d');
-    ratioChart = new Chart(ctxPie, {
-        type: 'doughnut',
+    // 2. Contingency Chart (Grouped Bar Chart)
+    const ctxCont = document.getElementById('contingencyChart').getContext('2d');
+    contingencyChart = new Chart(ctxCont, {
+        type: 'bar',
         data: {
-            labels: ['AAF (Academic Affiliation)', 'EQA (Equipment / Labs)'],
-            datasets: [{
-                data: [BUDGETS.AAF, BUDGETS.EQA],
-                backgroundColor: ['#6366f1', '#06b6d4'],
-                borderColor: 'rgba(17, 24, 39, 0.8)',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: '#f3f4f6', font: { family: 'Plus Jakarta Sans', weight: '500' } }
+            labels: ['AAF Contingency', 'EQA Contingency'],
+            datasets: [
+                {
+                    label: 'Allocated (₹)',
+                    data: [0, 0],
+                    backgroundColor: '#6366f1',
+                    borderRadius: 6,
+                    borderWidth: 0
+                },
+                {
+                    label: 'Utilized (₹)',
+                    data: [0, 0],
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 6,
+                    borderWidth: 0
                 }
-            }
-        }
+            ]
+        },
+        options: chartOptions
+    });
+
+    // 3. AAF Utilization Chart
+    const ctxAAF = document.getElementById('aafUtilizationChart').getContext('2d');
+    aafUtilizationChart = new Chart(ctxAAF, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'AAF Allocated (₹)',
+                    data: [],
+                    backgroundColor: '#6366f1',
+                    borderRadius: 6,
+                    borderWidth: 0
+                },
+                {
+                    label: 'AAF Utilized (₹)',
+                    data: [],
+                    backgroundColor: '#a5b4fc',
+                    borderRadius: 6,
+                    borderWidth: 0
+                }
+            ]
+        },
+        options: chartOptions
+    });
+
+    // 4. EQA Utilization Chart
+    const ctxEQA = document.getElementById('eqaUtilizationChart').getContext('2d');
+    eqaUtilizationChart = new Chart(ctxEQA, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'EQA Allocated (₹)',
+                    data: [],
+                    backgroundColor: '#06b6d4',
+                    borderRadius: 6,
+                    borderWidth: 0
+                },
+                {
+                    label: 'EQA Utilized (₹)',
+                    data: [],
+                    backgroundColor: '#67e8f9',
+                    borderRadius: 6,
+                    borderWidth: 0
+                }
+            ]
+        },
+        options: chartOptions
+    });
+
+    // 5. Department Subhead Chart (Horizontal bar)
+    const ctxSub = document.getElementById('deptSubheadChart').getContext('2d');
+    
+    // Copy options and override for horizontal chart
+    const horizontalOptions = JSON.parse(JSON.stringify(chartOptions));
+    horizontalOptions.indexAxis = 'y';
+
+    deptSubheadChart = new Chart(ctxSub, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Proposed (₹)',
+                    data: [],
+                    backgroundColor: '#6366f1',
+                    borderRadius: 4,
+                    borderWidth: 0
+                },
+                {
+                    label: 'Utilized (₹)',
+                    data: [],
+                    backgroundColor: '#06b6d4',
+                    borderRadius: 4,
+                    borderWidth: 0
+                }
+            ]
+        },
+        options: horizontalOptions
     });
 }
 
 // Update Chart Data on modifications
-function updateCharts() {
-    if (!utilizationChart) return;
+function updateCharts(data) {
+    if (!data || !data.departments) return;
 
-    const depts = [...new Set(proposals.map(p => p.dept))];
-    const sanctionedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.amountProposed || 0), 0);
-    });
-    const utilizedData = depts.map(d => {
-        return proposals.filter(p => p.dept === d).reduce((sum, p) => sum + (p.actualExpenditure || 0), 0);
-    });
-
-    utilizationChart.data.labels = depts.length ? depts : ['No Data'];
-    utilizationChart.data.datasets[0].data = sanctionedData.length ? sanctionedData : [0];
-    utilizationChart.data.datasets[1].data = utilizedData.length ? utilizedData : [0];
+    const labels = data.departments.map(d => d.code);
     
-    utilizationChart.update();
+    // 1. Master Utilization Chart
+    if (masterUtilizationChart) {
+        const allocated = data.departments.map(d => Math.round(d.allocatedAAF + d.allocatedEQA));
+        const utilized = data.departments.map(d => Math.round(d.utilizedAAF + d.utilizedEQA));
+        
+        masterUtilizationChart.data.labels = labels;
+        masterUtilizationChart.data.datasets[0].data = allocated;
+        masterUtilizationChart.data.datasets[1].data = utilized;
+        masterUtilizationChart.update();
+    }
+
+    // 2. AAF Utilization Chart
+    if (aafUtilizationChart) {
+        const allocated = data.departments.map(d => Math.round(d.allocatedAAF));
+        const utilized = data.departments.map(d => Math.round(d.utilizedAAF));
+        
+        aafUtilizationChart.data.labels = labels;
+        aafUtilizationChart.data.datasets[0].data = allocated;
+        aafUtilizationChart.data.datasets[1].data = utilized;
+        aafUtilizationChart.update();
+    }
+
+    // 3. EQA Utilization Chart
+    if (eqaUtilizationChart) {
+        const allocated = data.departments.map(d => Math.round(d.allocatedEQA));
+        const utilized = data.departments.map(d => Math.round(d.utilizedEQA));
+        
+        eqaUtilizationChart.data.labels = labels;
+        eqaUtilizationChart.data.datasets[0].data = allocated;
+        eqaUtilizationChart.data.datasets[1].data = utilized;
+        eqaUtilizationChart.update();
+    }
+
+    // 4. Contingency Chart (Grouped Bar Chart)
+    if (contingencyChart) {
+        const c = data.contingency;
+        contingencyChart.data.datasets[0].data = [Math.round(c.allocatedAAF), Math.round(c.allocatedEQA)];
+        contingencyChart.data.datasets[1].data = [Math.round(c.utilizedAAF), Math.round(c.utilizedEQA)];
+        contingencyChart.update();
+    }
+
+    // 5. Update Explorer
+    updateExplorerData(data);
+}
+
+// Update Explorer data and department specific subheads spent chart
+function updateExplorerData(data) {
+    const select = document.getElementById('explorer-dept-select');
+    if (!select || !select.value) return;
+    
+    const selectedDeptCode = select.value;
+    
+    // Find the stats for this department
+    const deptStat = data.departments.find(d => d.code === selectedDeptCode);
+    if (!deptStat) return;
+
+    // Update KPI panels on the right
+    document.getElementById('exp-dept-name').textContent = `${deptStat.name} (${deptStat.code})`;
+    document.getElementById('exp-dept-weight').textContent = `${(deptStat.weight * 100).toFixed(2)}%`;
+    document.getElementById('exp-dept-aaf-alloc').textContent = `₹${Math.round(deptStat.allocatedAAF).toLocaleString('en-IN')}`;
+    document.getElementById('exp-dept-aaf-util').textContent = `₹${Math.round(deptStat.utilizedAAF).toLocaleString('en-IN')}`;
+    document.getElementById('exp-dept-eqa-alloc').textContent = `₹${Math.round(deptStat.allocatedEQA).toLocaleString('en-IN')}`;
+    document.getElementById('exp-dept-eqa-util').textContent = `₹${Math.round(deptStat.utilizedEQA).toLocaleString('en-IN')}`;
+    
+    const totalAlloc = deptStat.allocatedAAF + deptStat.allocatedEQA;
+    const totalUtil = deptStat.utilizedAAF + deptStat.utilizedEQA;
+    const utilPct = totalAlloc > 0 ? (totalUtil / totalAlloc) * 100 : 0;
+    
+    const utilEl = document.getElementById('exp-dept-total-util');
+    utilEl.textContent = `${utilPct.toFixed(1)}%`;
+    utilEl.style.color = utilPct > 100 ? 'var(--warning)' : 'var(--success)';
+
+    // Group proposals for this department by Budget Head
+    const deptProposals = proposals.filter(p => String(p.dept).trim().toLowerCase() === selectedDeptCode.toLowerCase());
+    
+    const subheadAgg = {};
+    
+    // Initialize with all budget heads for the categories the department used or all default heads in state
+    budgetheads.forEach(h => {
+        subheadAgg[h.code] = {
+            code: h.code,
+            name: h.name,
+            proposed: 0,
+            utilized: 0
+        };
+    });
+
+    deptProposals.forEach(p => {
+        const sub = p.subHead;
+        if (subheadAgg[sub]) {
+            subheadAgg[sub].proposed += Number(p.amountProposed) || 0;
+            subheadAgg[sub].utilized += Number(p.actualExpenditure) || 0;
+        } else {
+            subheadAgg[sub] = {
+                code: sub,
+                name: p.comp || 'Unknown',
+                proposed: Number(p.amountProposed) || 0,
+                utilized: Number(p.actualExpenditure) || 0
+            };
+        }
+    });
+
+    const activeSubheads = Object.values(subheadAgg).filter(s => s.proposed > 0 || s.utilized > 0);
+
+    if (deptSubheadChart) {
+        if (activeSubheads.length === 0) {
+            deptSubheadChart.data.labels = ['No direct proposals yet'];
+            deptSubheadChart.data.datasets[0].data = [0];
+            deptSubheadChart.data.datasets[1].data = [0];
+        } else {
+            deptSubheadChart.data.labels = activeSubheads.map(s => `${s.code} (${s.name})`);
+            deptSubheadChart.data.datasets[0].data = activeSubheads.map(s => s.proposed);
+            deptSubheadChart.data.datasets[1].data = activeSubheads.map(s => s.utilized);
+        }
+        deptSubheadChart.update();
+    }
 }
 
 // Render Table Rows
@@ -554,7 +767,6 @@ function resetFormState() {
 function renderAll() {
     renderDepartmentStats();
     renderProposals();
-    updateCharts();
     updateGeneratedIdPlaceholder();
 }
 
@@ -718,8 +930,11 @@ function setupEvents() {
         panelDepartments.style.display = 'none';
         
         // Redraw charts because container size changes
-        if (utilizationChart) utilizationChart.resize();
-        if (ratioChart) ratioChart.resize();
+        if (masterUtilizationChart) masterUtilizationChart.resize();
+        if (contingencyChart) contingencyChart.resize();
+        if (aafUtilizationChart) aafUtilizationChart.resize();
+        if (eqaUtilizationChart) eqaUtilizationChart.resize();
+        if (deptSubheadChart) deptSubheadChart.resize();
     });
 
     tabManageBtn.addEventListener('click', () => {
@@ -741,6 +956,14 @@ function setupEvents() {
         
         renderDepartmentStats();
     });
+
+    // Explorer Dropdown Selection Change Event
+    const explorerDeptSelect = document.getElementById('explorer-dept-select');
+    if (explorerDeptSelect) {
+        explorerDeptSelect.addEventListener('change', () => {
+            renderDepartmentStats();
+        });
+    }
 
     // Admin Units Update Form
     const deptUnitsForm = document.getElementById('dept-units-form');

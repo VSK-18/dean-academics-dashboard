@@ -154,24 +154,108 @@
 
         <!-- TAB 1: Charts Panel (Visible by default) -->
         <section class="analytics-grid fade-in" id="panel-analytics" style="animation-delay: 0.2s;">
-            <!-- Main Utilization Chart -->
-            <div class="glass-card">
+            <!-- Master Utilization Chart (AAF + EQA Combined) -->
+            <div class="glass-card col-8">
                 <div class="chart-header">
-                    <h2>Department-wise Sanctioned vs. Utilized</h2>
-                    <span class="card-footer">Live Data Feed</span>
+                    <div>
+                        <h2 style="font-size: 1.2rem; font-weight: 700;">Master Budget: Department-wise Status</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">Total combined allocation & expenditure (AAF + EQA)</p>
+                    </div>
                 </div>
                 <div class="chart-container">
-                    <canvas id="utilizationChart"></canvas>
+                    <canvas id="masterUtilizationChart"></canvas>
                 </div>
             </div>
 
-            <!-- Distribution Ratio Chart -->
-            <div class="glass-card">
+            <!-- Contingency Reserve Status -->
+            <div class="glass-card col-4">
                 <div class="chart-header">
-                    <h2>Budget Allocation</h2>
+                    <div>
+                        <h2 style="font-size: 1.2rem; font-weight: 700;">Contingency Reserve</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">10% reserved contingency spending (Allocated vs Spent)</p>
+                    </div>
                 </div>
                 <div class="chart-container">
-                    <canvas id="ratioChart"></canvas>
+                    <canvas id="contingencyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- AAF Department-wise Chart -->
+            <div class="glass-card col-6">
+                <div class="chart-header">
+                    <div>
+                        <h2 style="font-size: 1.2rem; font-weight: 700;">AAF Budget: Department-wise Status</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">Academic Affiliation spending details</p>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="aafUtilizationChart"></canvas>
+                </div>
+            </div>
+
+            <!-- EQA Department-wise Chart -->
+            <div class="glass-card col-6">
+                <div class="chart-header">
+                    <div>
+                        <h2 style="font-size: 1.2rem; font-weight: 700;">EQA Budget: Department-wise Status</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">Equipment & Lab spending details</p>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="eqaUtilizationChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Department Detail Explorer -->
+            <div class="glass-card col-12">
+                <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="font-size: 1.2rem; font-weight: 700;">Individual Department Analysis</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">Explore proposal details & budget heads breakdown for a specific department</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <label for="explorer-dept-select" style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">Select Department:</label>
+                        <select id="explorer-dept-select" class="search-input" style="width: auto; min-width: 220px; padding: 0.5rem 1rem;">
+                            <!-- Injected dynamically -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 1.5rem;" class="explorer-body">
+                    <!-- Chart of spent by Budget Head -->
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="deptSubheadChart"></canvas>
+                    </div>
+                    
+                    <!-- Text/KPI Summary details -->
+                    <div style="display: flex; flex-direction: column; gap: 1.2rem; justify-content: center; background: rgba(255, 255, 255, 0.02); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border-color);">
+                        <h3 style="font-size: 1.1rem; color: var(--primary); margin-bottom: 0.5rem;" id="exp-dept-name">Department Summary</h3>
+                        
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary);">Unit Weight:</span>
+                            <span id="exp-dept-weight" style="font-weight: 600;">0%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary);">AAF Allocation:</span>
+                            <span id="exp-dept-aaf-alloc" style="font-weight: 600;">₹0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary);">AAF Utilized:</span>
+                            <span id="exp-dept-aaf-util" style="font-weight: 600; color: var(--warning);">₹0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary);">EQA Allocation:</span>
+                            <span id="exp-dept-eqa-alloc" style="font-weight: 600;">₹0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary);">EQA Utilized:</span>
+                            <span id="exp-dept-eqa-util" style="font-weight: 600; color: var(--warning);">₹0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding-top: 0.5rem;">
+                            <span style="color: var(--text-secondary); font-weight: bold;">Total Utilization:</span>
+                            <span id="exp-dept-total-util" style="font-weight: bold; color: var(--success);">0%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

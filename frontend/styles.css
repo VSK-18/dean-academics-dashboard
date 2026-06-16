@@ -265,13 +265,24 @@ header {
 /* Main Dashboard Analytics Area */
 .analytics-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: repeat(12, 1fr);
     gap: 1.5rem;
 }
 
+.col-12 { grid-column: span 12; }
+.col-8 { grid-column: span 8; }
+.col-4 { grid-column: span 4; }
+.col-6 { grid-column: span 6; }
+
 @media (max-width: 1024px) {
-    .analytics-grid {
-        grid-template-columns: 1fr;
+    .col-8, .col-4, .col-6 {
+        grid-column: span 12;
+    }
+}
+
+@media (max-width: 768px) {
+    .explorer-body {
+        grid-template-columns: 1fr !important;
     }
 }
 

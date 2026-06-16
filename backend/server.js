@@ -80,6 +80,57 @@ const DEFAULT_BUDGET_HEADS = [
     { code: "EQA/2", name: "Any other expenses", category: "EQA" }
 ];
 
+const DEFAULT_PROPOSALS = [
+    {
+        id: "1/AAF",
+        category: "AAF",
+        date: "2026-04-10",
+        comp: "14th Academic Council Meeting",
+        dept: "All",
+        subHead: "AAF/3",
+        amountProposed: 45000,
+        actualExpenditure: 45000,
+        month: "April",
+        remarks: "Approved and completed"
+    },
+    {
+        id: "1/EQA",
+        category: "EQA",
+        date: "2026-04-15",
+        comp: "Computer Lab Upgrade",
+        dept: "COMP",
+        subHead: "EQA/1",
+        amountProposed: 500000,
+        actualExpenditure: 480000,
+        month: "April",
+        remarks: "18 PCs upgraded"
+    },
+    {
+        id: "2/AAF",
+        category: "AAF",
+        date: "2026-05-02",
+        comp: "Guest Lecture Series",
+        dept: "IT",
+        subHead: "AAF/5",
+        amountProposed: 15000,
+        actualExpenditure: 12000,
+        month: "May",
+        remarks: "Session on Web3"
+    },
+    {
+        id: "2/EQA",
+        category: "EQA",
+        date: "2026-05-12",
+        comp: "Physics Lab Equipment",
+        dept: "ASH",
+        subHead: "EQA/1",
+        amountProposed: 250000,
+        actualExpenditure: 250000,
+        month: "May",
+        remarks: "Delivered & installed"
+    }
+];
+
 async function seedDatabase() {
     try {
         const deptCount = await Department.countDocuments();
@@ -92,6 +143,12 @@ async function seedDatabase() {
         if (headCount === 0) {
             await BudgetHead.insertMany(DEFAULT_BUDGET_HEADS);
             console.log('Seeded default budget heads.');
+        }
+
+        const proposalCount = await Proposal.countDocuments();
+        if (proposalCount === 0) {
+            await Proposal.insertMany(DEFAULT_PROPOSALS);
+            console.log('Seeded default proposals.');
         }
     } catch (err) {
         console.error('Seeding database error:', err);
@@ -391,16 +448,43 @@ app.delete('/api/proposals/:id', async (req, res) => {
     }
 });
 
-// 5. Export proposals to Excel
+// 5. Export proposals to Excel (supports real-time filter params)
 app.get('/api/export', async (req, res) => {
     try {
-        const proposals = await Proposal.find({});
+        let proposals = await Proposal.find({});
+
+        // Apply filters from query params (mirrors frontend activeFilters)
+        const { category, startDate, endDate, query } = req.query;
+
+        if (category && category !== 'all') {
+            proposals = proposals.filter(p => p.category === category);
+        }
+
+        if (startDate) {
+            const start = new Date(startDate);
+            proposals = proposals.filter(p => new Date(p.date) >= start);
+        }
+
+        if (endDate) {
+            const end = new Date(endDate);
+            proposals = proposals.filter(p => new Date(p.date) <= end);
+        }
+
+        if (query && query.trim() !== '') {
+            const q = query.trim().toLowerCase();
+            proposals = proposals.filter(p =>
+                (p.comp || '').toLowerCase().includes(q) ||
+                (p.dept || '').toLowerCase().includes(q) ||
+                (p.subHead || '').toLowerCase().includes(q)
+            );
+        }
+
         const templatePath = path.join(__dirname, 'templates', 'AAF-EQA Budget Monitor_2026-27.xlsx');
-        const outputPath = path.join(__dirname, 'output_excel.xlsx');
-        
+        const outputPath = path.join(__dirname, `output_excel_${Date.now()}.xlsx`);
+
         await exportExcel(proposals, templatePath, outputPath);
-        
-        res.download(outputPath, 'AAF-EQA Budget Monitor_2026-27.xlsx', (err) => {
+
+        res.download(outputPath, 'AAF-EQA Budget Monitor_2026-27 (2).xlsx', (err) => {
             // Clean up temp output file
             try {
                 if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);

@@ -813,6 +813,37 @@ function setupEvents() {
         renderProposals();
     });
 
+    // Download Excel — passes current active filters so the export matches what's on screen
+    const exportBtn = document.getElementById('btn-export-excel');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            const params = new URLSearchParams();
+
+            if (activeFilters.category && activeFilters.category !== 'all') {
+                params.set('category', activeFilters.category);
+            }
+            if (activeFilters.startDate) {
+                params.set('startDate', activeFilters.startDate);
+            }
+            if (activeFilters.endDate) {
+                params.set('endDate', activeFilters.endDate);
+            }
+            if (activeFilters.query && activeFilters.query.trim() !== '') {
+                params.set('query', activeFilters.query.trim());
+            }
+
+            const url = `/api/export?${params.toString()}`;
+
+            // Trigger download via a temporary hidden link
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+    }
+
     // Form Reset
     cancelFormBtn.addEventListener('click', () => {
         resetFormState();

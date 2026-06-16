@@ -17,6 +17,56 @@ let activeFilters = {
     endDate: '2026-05-15'
 };
 let currentUserRole = sessionStorage.getItem('dean_user_role') || null;
+let currentTheme = localStorage.getItem('dean_theme') || 'dark';
+
+// Theme Helper Functions
+function applyTheme(theme) {
+    currentTheme = theme;
+    localStorage.setItem('dean_theme', theme);
+    
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    const themeBtnAuth = document.getElementById('btn-theme-toggle-auth');
+    
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        if (themeBtn) themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+        if (themeBtnAuth) themeBtnAuth.innerHTML = '<i class="fa-solid fa-moon"></i>';
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        if (themeBtn) themeBtn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+        if (themeBtnAuth) themeBtnAuth.innerHTML = '<i class="fa-solid fa-sun"></i>';
+    }
+    
+    updateChartColors(theme);
+}
+
+function toggleTheme() {
+    const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+    applyTheme(nextTheme);
+}
+
+function updateChartColors(theme) {
+    const isLight = theme === 'light';
+    const textColor = isLight ? '#0f172a' : '#f3f4f6';
+    const tickColor = isLight ? '#475569' : '#9ca3af';
+    const gridColor = isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.05)';
+    const borderColor = isLight ? '#ffffff' : 'rgba(17, 24, 39, 0.8)';
+
+    if (utilizationChart) {
+        utilizationChart.options.plugins.legend.labels.color = textColor;
+        utilizationChart.options.scales.x.ticks.color = tickColor;
+        utilizationChart.options.scales.x.grid.color = gridColor;
+        utilizationChart.options.scales.y.ticks.color = tickColor;
+        utilizationChart.options.scales.y.grid.color = gridColor;
+        utilizationChart.update();
+    }
+
+    if (ratioChart) {
+        ratioChart.options.plugins.legend.labels.color = textColor;
+        ratioChart.data.datasets[0].borderColor = borderColor;
+        ratioChart.update();
+    }
+}
 
 // Dom Elements
 const proposalsList = document.getElementById('proposals-list');
@@ -762,6 +812,16 @@ function setupEvents() {
             }
         });
     }
+
+    // Theme toggles registration
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', toggleTheme);
+    }
+    const themeBtnAuth = document.getElementById('btn-theme-toggle-auth');
+    if (themeBtnAuth) {
+        themeBtnAuth.addEventListener('click', toggleTheme);
+    }
 }
 
 // Perform Auth Layout Transition
@@ -816,6 +876,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadLookups();
     setupEvents();
     initCharts();
+    applyTheme(currentTheme);
     checkSession();
     if (currentUserRole) {
         fetchProposals();

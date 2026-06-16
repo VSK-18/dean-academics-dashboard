@@ -32,6 +32,60 @@
     --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     --backdrop-blur: blur(12px);
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Dynamic inputs, modal, title & gradients */
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.08);
+    --color-scheme: dark;
+    --bg-modal: #0d1321;
+    --bg-modal-overlay: rgba(5, 7, 12, 0.85);
+    --brand-title-gradient: linear-gradient(to right, #ffffff, #9ca3af);
+    --bg-gradient-1: rgba(99, 102, 241, 0.15);
+    --bg-gradient-2: rgba(6, 182, 212, 0.1);
+    --bg-table-hover: rgba(255, 255, 255, 0.02);
+    
+    /* Tab colors */
+    --bg-tab: rgba(255, 255, 255, 0.03);
+    --bg-tab-hover: rgba(255, 255, 255, 0.08);
+    --text-tab-hover: #ffffff;
+}
+
+[data-theme="light"] {
+    --bg-main: #f1f5f9;
+    --bg-surface: rgba(255, 255, 255, 0.7);
+    --bg-surface-hover: rgba(241, 245, 249, 0.9);
+    --bg-card: rgba(255, 255, 255, 0.65);
+    --border-color: rgba(15, 23, 42, 0.08);
+    --border-color-active: rgba(99, 102, 241, 0.4);
+    
+    /* Text Colors */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    
+    /* Input Variables */
+    --bg-input: rgba(15, 23, 42, 0.04);
+    --bg-input-focus: rgba(15, 23, 42, 0.07);
+    --color-scheme: light;
+    
+    /* Modal Variables */
+    --bg-modal: #ffffff;
+    --bg-modal-overlay: rgba(15, 23, 42, 0.4);
+    
+    /* Brand Gradient & Theme Customizations */
+    --brand-title-gradient: linear-gradient(to right, #0f172a, #475569);
+    --bg-gradient-1: rgba(99, 102, 241, 0.07);
+    --bg-gradient-2: rgba(6, 182, 212, 0.05);
+    --bg-table-hover: rgba(15, 23, 42, 0.02);
+    
+    /* Tab Hover Customizations */
+    --bg-tab: rgba(15, 23, 42, 0.03);
+    --bg-tab-hover: rgba(15, 23, 42, 0.08);
+    --text-tab-hover: #0f172a;
+    
+    /* Shadows & Blur */
+    --card-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+    --backdrop-blur: blur(8px);
 }
 
 * {
@@ -45,8 +99,8 @@
 body {
     background-color: var(--bg-main);
     background-image: 
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+        radial-gradient(at 0% 0%, var(--bg-gradient-1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, var(--bg-gradient-2) 0px, transparent 50%);
     background-attachment: fixed;
     color: var(--text-primary);
     min-height: 100vh;
@@ -96,7 +150,7 @@ header {
 .brand-section h1 {
     font-size: 2.25rem;
     font-weight: 800;
-    background: linear-gradient(to right, #ffffff, #9ca3af);
+    background: var(--brand-title-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -172,7 +226,7 @@ header {
 .card-value {
     font-size: 2rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     margin: 0.5rem 0;
 }
 
@@ -256,7 +310,7 @@ header {
 }
 
 .search-input {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-input);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.75rem 1.25rem;
@@ -269,7 +323,7 @@ header {
 
 .search-input:focus {
     border-color: var(--primary);
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--bg-input-focus);
     box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
 }
 
@@ -280,7 +334,7 @@ header {
 }
 
 .date-filters input {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-input);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.65rem 0.75rem;
@@ -288,7 +342,7 @@ header {
     font-size: 0.85rem;
     outline: none;
     transition: var(--transition);
-    color-scheme: dark;
+    color-scheme: var(--color-scheme);
 }
 
 .date-filters input:focus {
@@ -364,7 +418,7 @@ tr:last-child td {
 }
 
 tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-table-hover);
 }
 
 .badge {
@@ -441,7 +495,7 @@ tr:hover td {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(5, 7, 12, 0.85);
+    background: var(--bg-modal-overlay);
     backdrop-filter: var(--backdrop-blur);
     display: flex;
     align-items: center;
@@ -458,13 +512,13 @@ tr:hover td {
 }
 
 .modal-content {
-    background: #0d1321;
+    background: var(--bg-modal);
     border: 1px solid var(--border-color-active);
     border-radius: 24px;
     width: 90%;
     max-width: 550px;
     padding: 2rem;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--card-shadow);
     transform: scale(0.95);
     transition: var(--transition);
 }
@@ -514,7 +568,7 @@ tr:hover td {
 
 .form-group input,
 .form-group select {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-input);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.75rem 1rem;
@@ -528,7 +582,7 @@ tr:hover td {
 .form-group input:focus,
 .form-group select:focus {
     border-color: var(--primary);
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--bg-input-focus);
 }
 
 /* Animations */
@@ -551,6 +605,7 @@ tr:hover td {
 }
 
 .auth-card {
+    position: relative;
     width: 100%;
     max-width: 420px;
     padding: 2.5rem 2rem;
@@ -646,7 +701,7 @@ tr:hover td {
 }
 
 .tab-btn {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-tab);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
     padding: 0.65rem 1.25rem;
@@ -661,8 +716,8 @@ tr:hover td {
 }
 
 .tab-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
+    background: var(--bg-tab-hover);
+    color: var(--text-tab-hover);
 }
 
 .tab-btn.active {
@@ -698,7 +753,7 @@ tr:hover td {
 
 #panel-departments select,
 #panel-departments input {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-input);
     border: 1px solid var(--border-color) !important;
     color: var(--text-primary) !important;
     padding: 0.75rem 1rem;
@@ -711,7 +766,35 @@ tr:hover td {
 #panel-departments select:focus,
 #panel-departments input:focus {
     border-color: var(--primary) !important;
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: var(--bg-input-focus) !important;
+}
+
+/* Theme Toggle Button Styles */
+.theme-btn {
+    background: var(--bg-tab);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.theme-btn:hover {
+    background: var(--bg-tab-hover);
+    border-color: var(--primary);
+    transform: rotate(15deg) scale(1.05);
+}
+
+.auth-theme-toggle {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
 }
 
 
